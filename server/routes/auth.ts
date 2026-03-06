@@ -1,13 +1,27 @@
 /**
  * 认证路由
- * NOTE: 使用自管 OTP 替代 Supabase magic link，确保注册流程中
- * 用户能收到数字验证码而非链接，并正确设置密码
+ * NOTE: 使用 nodemailer 通过 Gmail SMTP 发送验证码邮件
  */
 import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
+import nodemailer from 'nodemailer';
 
 const router = Router();
+
+/**
+ * 配置 nodemailer SMTP transporter
+ * NOTE: 使用 .env 中的 Gmail SMTP 配置
+ */
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT) || 465,
+    secure: true,
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+});
 
 /**
  * 内存中的 OTP 存储
@@ -25,9 +39,7 @@ function generateOtp(): string {
 
 /**
  * 发送 OTP 验证码到邮箱
- * NOTE: 使用 Supabase 的邮件功能发送自定义验证码邮件
- * 通过 admin API 调用 Supabase 的 inviteUserByEmail 或直接用 Edge Function
- * 这里使用简化方案：通过 Supabase Database 插入消息触发邮件
+ * NOTE: 通过 nodemailer + Gmail SMTP 发送真实邮件
  */
 router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     const { email } = req.body;
@@ -45,7 +57,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
 
     // 防止频繁发送（同一邮箱 60 秒内只能发一次）
     const existing = otpStore.get(email);
-    if (existing && existing.expiresAt - Date.now() > 60000) {
+    if (existing && existing.expiresAt - Date.now() > 240000) {
         res.status(429).json({ error: '验证码已发送，请稍后再试' });
         return;
     }
@@ -54,39 +66,43 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     // OTP 有效期 5 分钟
     otpStore.set(email, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
 
-    // 使用 Supabase Auth 的 admin API 发送邮件
-    // NOTE: 通过 generateLink 生成可控的邮件内容
     try {
-        // 使用 Supabase 的 REST API 发送自定义邮件
-        const response = await fetch(`${process.env.SUPABASE_URL}/auth/v1/admin/generate_link`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
-                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
-            },
-            body: JSON.stringify({
-                type: 'magiclink',
-                email,
-            }),
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: email,
+            subject: '【聚神灸】邮箱验证码',
+            html: `
+                <div style="max-width:480px;margin:0 auto;padding:32px;font-family:'Segoe UI',Arial,sans-serif;background:#fefcf7;border:1px solid #e8dcc8;border-radius:16px;">
+                    <div style="text-align:center;margin-bottom:24px;">
+                        <h1 style="color:#B8860B;font-size:24px;margin:0;">聚神灸</h1>
+                        <p style="color:#a08050;font-size:13px;margin:4px 0 0;">草本艾烟专卖</p>
+                    </div>
+                    <div style="background:white;border-radius:12px;padding:24px;border:1px solid #f0e6d0;">
+                        <p style="color:#333;font-size:15px;margin:0 0 16px;">您好，</p>
+                        <p style="color:#555;font-size:14px;margin:0 0 20px;">您的邮箱验证码为：</p>
+                        <div style="text-align:center;background:linear-gradient(135deg,#B8860B,#D4A017);border-radius:12px;padding:20px;margin:0 0 20px;">
+                            <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:white;">${code}</span>
+                        </div>
+                        <p style="color:#888;font-size:12px;margin:0;text-align:center;">验证码有效期为 5 分钟，请勿将验证码告知他人</p>
+                    </div>
+                    <p style="color:#bbb;font-size:11px;text-align:center;margin:16px 0 0;">此邮件由系统自动发送，请勿直接回复</p>
+                </div>
+            `,
         });
 
-        if (!response.ok) {
-            // generateLink 可能失败（用户不存在等），但我们不关心
-            // OTP 验证码已生成并存储，后续注册时会验证
-            console.log('Generate link response:', response.status);
-        }
-    } catch (err) {
-        console.log('Email send attempt:', err);
+        console.log(`📧 验证码已发送至 ${email}`);
+        res.json({ message: '验证码已发送，请检查您的邮箱' });
+    } catch (err: any) {
+        console.error('邮件发送失败:', err);
+        // HACK: 邮件发送失败时，将验证码在响应中返回（仅开发环境）
+        console.log(`\n========================================`);
+        console.log(`📧 验证码 for ${email}: ${code}`);
+        console.log(`========================================\n`);
+        res.json({
+            message: '验证码已发送，请检查您的邮箱',
+            code_hint: process.env.NODE_ENV === 'development' ? code : undefined,
+        });
     }
-
-    // 不管邮件是否发送成功，都返回成功（防止邮箱枚举）
-    // HACK: 由于 Supabase 免费版邮件限制，将验证码打印到控制台作为备用
-    console.log(`\n========================================`);
-    console.log(`📧 验证码 for ${email}: ${code}`);
-    console.log(`========================================\n`);
-
-    res.json({ message: '验证码已发送，请检查您的邮箱', code_hint: process.env.NODE_ENV === 'development' ? code : undefined });
 });
 
 /**
