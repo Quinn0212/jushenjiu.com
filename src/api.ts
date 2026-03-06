@@ -3,6 +3,7 @@
  * 统一封装所有后端 API 调用
  */
 
+// src/api.ts
 const API_BASE = '/api';
 
 /**

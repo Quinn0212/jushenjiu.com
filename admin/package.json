@@ -1,0 +1,27 @@
+{
+    "name": "jushenjiu-admin",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.49.1",
+        "lucide-react": "^0.474.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0"
+    },
+    "devDependencies": {
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "@vitejs/plugin-react": "^4.3.4",
+        "autoprefixer": "^10.4.20",
+        "postcss": "^8.5.1",
+        "tailwindcss": "^4.0.0",
+        "typescript": "^5.7.3",
+        "vite": "^6.1.0"
+    }
+}

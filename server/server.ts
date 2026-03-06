@@ -47,9 +47,11 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
-    console.log(`\n🔥 聚神灸后端服务已启动：http://localhost:${PORT}`);
-    console.log(`📦 API 基础路径：http://localhost:${PORT}/api\n`);
-});
+if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
+    app.listen(PORT, () => {
+        console.log(`\n🔥 聚神灸后端服务已启动：http://localhost:${PORT}`);
+        console.log(`📦 API 基础路径：http://localhost:${PORT}/api\n`);
+    });
+}
 
 export default app;
