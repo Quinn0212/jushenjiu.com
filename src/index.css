@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", serif;
+  
+  --color-primary: #B8860B;
+  --color-primary-light: #F2E3D5;
+  --color-background-light: #D9C1B0;
+  --color-background-dark: #221310;
+}
+
+@layer base {
+  body {
+    @apply bg-background-light text-slate-900 font-sans;
+    background: linear-gradient(to bottom, #A68B7C 0%, #D9BBA9 50%, #B89985 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+.rice-paper {
+  background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+  background-blend-mode: soft-light;
+  opacity: 0.8;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

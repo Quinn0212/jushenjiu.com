@@ -1,0 +1,32 @@
+/**
+ * 后端 TypeScript 配置
+ * NOTE: 独立于前端的 tsconfig，以支持 Node.js 环境
+ */
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "lib": [
+            "ES2022"
+        ],
+        "outDir": "./dist",
+        "rootDir": ".",
+        "strict": true,
+        "esModuleInterop": true,
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "types": [
+            "node"
+        ]
+    },
+    "include": [
+        "./**/*.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
